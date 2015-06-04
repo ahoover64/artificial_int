@@ -1,0 +1,16 @@
+This uses a list in python to keep track of the moves necessary to win the game.
+
+The cup is a class.
+
+Algorithm for Learning the Game
+
+1. Set up the cups
+  - Start at cup 15
+2. Remove a number from the cup of pennies from the pile
+3. Randomly take 1-3 pennies as the "player"
+4. Check the cup equal to the number of pennies
+  - Select random number from cup
+5. Repeat step 2 - 4 until no pennies are left
+6. If the "player" took the last penny, don't do anything
+  - Otherwise, remove the last randomly selected option
+7. Repeat from step 1 for a long time
