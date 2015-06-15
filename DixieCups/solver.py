@@ -49,7 +49,7 @@ while i < trials:
         if cur_pennies <= 0:
             cups[cur_pennies + usr_amt - 1].random_lost()
             break
-        # Random Choice
+        # Random Choice (less efficient)
         '''
         usr_amt = random.randint(1,choice_range) if cur_pennies > (choice_range - 1) else random.randint(1,cur_pennies)
         cur_pennies = cur_pennies - usr_amt
