@@ -17,7 +17,7 @@ def solve_brute_force():
     x = 0
     while(True):
         x = x + 1
-        for j in range(x):
+        for j in xrange(x):
             y = j + 1
             if pell(x,y) == 1:
                 return x, y
