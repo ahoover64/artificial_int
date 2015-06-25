@@ -1,50 +1,61 @@
 #include "neural_net.h"
-#include <math>
+#include <math.h>
 #include <iostream>
 #include <random>
+#include <cstddef>
+
+// Unused spare code from when I needed an array size.
+// I won't remove it becuase it could be helpful later
+template<typename T, std::size_t N>
+std::size_t size(T (&)[N]) { return N; }
 
 class NeuralNet::Impl {
 public:
     // implementation variables
+    int hidden_layers;
     int ni, no;
-    int[] n_layers;
-    double[][][] weights;
-    double[][][] changes;
-    double[][] node_acts;
+    int* n_layers;
+    double*** weights;
+    double*** changes;
+    double** node_acts;
     // Sigmoid Function
     double sigmoid(double x) {
-        return tanh(x)
+        return tanh(x);
     }
     // Derivative of sigmoid in terms of output
     double dsigmoid(double y) {
-        return 1 - y*y
+        return 1 - y*y;
     }
     // Useful Matrix Functions
-    double[][] makeRandMatrix(int rows, int cols) {
-        double[rows][cols] m;
+    double** makeRandMatrix(int rows, int cols) {
+        double** m = new double *[rows];
         for(int r = 0; r < rows; r++) {
+            m[r] = new double[cols];
             for(int c = 0; c < cols; c++) {
                 m[r][c] = ((double) rand() / RAND_MAX) * 2 - 1;
             }
         }
+        return m;
     }
-    double[][] makeZeroMatrix(int rows, int cols) {
-        double[rows][cols] m;
+    double** makeZeroMatrix(int rows, int cols) {
+        double** m = new double*[cols];
         for(int r = 0; r < rows; r++) {
+            m[r] = new double[cols];
             for(int c = 0; c < cols; c++) {
                 m[r][c] = 0.0;
             }
         }
+        return m;
     }
     // Functions that are meant to be hidden but directly used in the implementation
-    double[] update_network(double[] inputs) {
+    double* update_network(double* inputs) {
         for(int i = 0; i < ni - 1; i++) {
-            node_acts[0][i] = inputs[i]
+            node_acts[0][i] = inputs[i];
         }
-        for(int k = 1; k < n_layers.length-1; k++) {
-            for(int j = 0; j < n_layers[k].length - 1; j++) {
-                double total = 0.0
-                for(int i = 0; i < n_layers[k-1].length; i++) {
+        for(int k = 1; k < hidden_layers-1; k++) {
+            for(int j = 0; j < n_layers[k] - 1; j++) {
+                double total = 0.0;
+                for(int i = 0; i < n_layers[k-1]; i++) {
                     total += node_acts[k-1][i] * weights[k][i][j]; // NEED TO CHECK. Indecies are confusing
                 }
                 node_acts[k][j] = sigmoid(total);
@@ -52,25 +63,25 @@ public:
         }
         for(int i = 0; i < no; i++) {
             double total = 0.0;
-            for(int j = 0; j < n_layers[n_layers.length-1].length) {
-                total += node_acts[n_layers.length-1][j] * weights[n_layers.length][j][i];
+            for(int j = 0; j < n_layers[hidden_layers-1]; j++) {
+                total += node_acts[hidden_layers-1][j] * weights[hidden_layers][j][i];
             }
-            node_acts[n_layers.length + 1][i] = total;
+            node_acts[hidden_layers + 1][i] = total;
         }
-        return node_acts[n_layers.length + 1];
+        return node_acts[hidden_layers + 1];
     }
 
-    double backPropogate(double[] targets, double N, double M) {
-        double[][] deltas = double[n_layers.length + 1];
-        deltas[n_layers.length] = double[no];
+    double backPropogate(double* targets, double N, double M) {
+        double** deltas = new double *[hidden_layers + 1];
+        deltas[hidden_layers] = new double [no];
         for(int i = 0; i < no; i++) {
-            deltas[n_layers.length][i] = targets[i] - node_acts[n_layers + 1][i];
-            deltas[n_layers.length][i] *= dsigmoid(node_acts[n_layers+1][i]);
+            deltas[hidden_layers][i] = targets[i] - node_acts[hidden_layers + 1][i];
+            deltas[hidden_layers][i] *= dsigmoid(node_acts[hidden_layers+1][i]);
         }
-        for(int j = n_layers.length-1; j >= 0; j--) {
-            deltas[j] = double[n_layers[j]];
+        for(int j = hidden_layers-1; j >= 0; j--) {
+            deltas[j] = new double [n_layers[j]];
             for(int i = 0; i < n_layers[j]; i++) {
-                double error = 0.0
+                double error = 0.0;
                 for(int k = 0; k < n_layers[j+1]; k++) {
                     error += deltas[j+1][k] * weights[j][i][k];
                 }
@@ -78,14 +89,14 @@ public:
             }
         }
         int plen, len;
-        for(int k = n_layers.length; k >= 0; k--) {
+        for(int k = hidden_layers; k >= 0; k--) {
             if(k==0) { plen = ni; }
-            else {plen = n_layers[k-1]}
-            if(k==n_layers.length) { len = no; }
-            else {plen = n_layers[k]}
+            else { plen = n_layers[k-1]; }
+            if(k==hidden_layers) { len = no; }
+            else { plen = n_layers[k]; }
             for(int j = 0; j < plen; j++) {
                 for(int i = 0; i < len; i++) {
-                    double change = deltas[k][i] * node_acts[j];
+                    double change = deltas[k][i] * node_acts[j][i];
                     weights[k][j][i] += N * change + M * changes[k][j][i];
                     changes[k][j][i] = change;
                 }
@@ -93,72 +104,88 @@ public:
         }
         // Calculate error
         double error = 0.0;
-        for(int i = 0; i < targets.length; i++) {
-            errror += 0.5 * ((targets[i]-node_acts[n_layers+1]) * (targets[i]-node_acts[n_layers+1]));
+        for(int i = 0; i < no; i++) {
+            error += 0.5 * ((targets[i]-node_acts[hidden_layers+1][i]) * (targets[i]-node_acts[hidden_layers+1][i]));
         }
+        delete deltas;
         return error;
     }
 };
 
-NerualNet::NeuralNet(int nInput, int nOutput, int nLayers) : mImpl(new Impl) {
+NeuralNet::NeuralNet(int nInput, int nOutput, int nLayers) : mImpl(new Impl) {
+    mImpl->hidden_layers = 1;
     mImpl->ni = nInput;
     mImpl->no = nOutput;
-    mImpl->n_layers = [nLayers + 1];
-    mImpl->weights = double[2];
-    weights[0] = mImpl->makeRandMatrix(nInput, nLayers);
-    weights[1] = mImpl->makeRandMatrix(nLayers, nOutput);
-    mImpl->changes = double[2];
-    changes[0] = mImpl->makeZeroMatrix(nInput, nLayers);
-    changes[1] = mImpl->makeZeroMatrix(nLayers, nOutput);
-    mImpl->node_acts = double[3];
-    // Initialize the lengths of node_acts based on the number of neurons
+    mImpl->n_layers = new int [1];
+    mImpl->n_layers[0] = nLayers + 1;
+    mImpl->weights = new double **[2];
+    mImpl->weights[0] = mImpl->makeRandMatrix(nInput, nLayers);
+    mImpl->weights[1] = mImpl->makeRandMatrix(nLayers, nOutput);
+    mImpl->changes = new double **[2];
+    mImpl->changes[0] = mImpl->makeZeroMatrix(nInput, nLayers);
+    mImpl->changes[1] = mImpl->makeZeroMatrix(nLayers, nOutput);
+    mImpl->node_acts = new double *[3];
+    mImpl->node_acts[0] = new double [nInput];
+    mImpl->node_acts[1] = new double [nLayers];
+    mImpl->node_acts[2] = new double [nOutput];
 }
 
-NerualNet::NeuralNet(int nInput, int nOutput, int[] nLayers) : nImpl(new Impl) {
+NeuralNet::NeuralNet(int nInput, int nOutput, int nLayers[]) : mImpl(new Impl) {
+    mImpl->hidden_layers = sizeof(*nLayers) / sizeof(nLayers[0]);
+    int hidden_layers = mImpl->hidden_layers;
     mImpl->ni = nInput + 1; // for bias neuron
     mImpl->no = nOutput;
-    mImpl->n_layers = int[nLayers.length];
-    for(int i = 0; i < nLayers.length; i++) {
+    mImpl->n_layers = new int [hidden_layers];
+    for(int i = 0; i < hidden_layers; i++) {
         mImpl->n_layers[i] = nLayers[i] + 1;
     }
-    mImpl->weights = double[nLayers.length + 1];
-    weights[0] = mImpl->makeRandMatrix(nInput, nLayers[0]);
-    weights[nLayers.length] = mImpl->makeRandMatrix(nLayers[nLayers.length - 1], nOutput);
-    for(int i = 1; i < nLayers.length ; i++) {
-        weights[i] = mImpl->makeRandMatrix(nLayers[i - 1], nLayers[i]);
+    mImpl->weights = new double **[hidden_layers + 1];
+    mImpl->weights[0] = mImpl->makeRandMatrix(nInput, nLayers[0]);
+    mImpl->weights[hidden_layers] = mImpl->makeRandMatrix(nLayers[hidden_layers - 1], nOutput);
+    for(int i = 1; i < hidden_layers ; i++) {
+        mImpl->weights[i] = mImpl->makeRandMatrix(nLayers[i - 1], nLayers[i]);
     }
-    mImpl->changes = double[nLayers.length + 1];
-    changes[0] = mImpl->makeZeroMatrix(nInput, nLayers[0]);
-    changes[nLayers.length] = mImpl->makeZeroMatrix(nLayers[nLayers.length - 1], nOutput);
-    for(int i = 1; i < nLayers.length ; i++) {
-        changes[i] = mImpl->makeZeroMatrix(nLayers[i - 1], nLayers[i]);
+    mImpl->changes = new double **[hidden_layers + 1];
+    mImpl->changes[0] = mImpl->makeZeroMatrix(nInput, nLayers[0]);
+    mImpl->changes[hidden_layers] = mImpl->makeZeroMatrix(nLayers[hidden_layers - 1], nOutput);
+    for(int i = 1; i < hidden_layers ; i++) {
+        mImpl->changes[i] = mImpl->makeZeroMatrix(nLayers[i - 1], nLayers[i]);
     }
-    mImpl->node_acts = double[nLayers.length + 2];
-    // Initialize the lengths of node_acts based on the number of neurons
+    mImpl->node_acts = new double *[hidden_layers + 2];
+    mImpl->node_acts[0] = new double [nInput];
+    mImpl->node_acts[hidden_layers + 1] = new double[nOutput];
+    for(int i = 1; i < hidden_layers + 1; i++)  {
+        mImpl->node_acts[i] = new double [nLayers[i]];
+    }
 }
 
-NeuralNet::NeuralNet(const NerualNet &other) : mImpl(other.mImpl) {
+NeuralNet::NeuralNet(const NeuralNet &other) : mImpl(other.mImpl) {
     mImpl->ni = other.mImpl->ni;
     mImpl->no = other.mImpl->no;
     mImpl->n_layers = other.mImpl->n_layers;
 }
 
 NeuralNet& NeuralNet::operator=(const NeuralNet &other) {
-    if(this != other) {
+    if(this != &other) {
         mImpl->ni = other.mImpl->ni;
         mImpl->no = other.mImpl->no;
-        mImpl->n_layers = other.mImpl->n_layers;
+        mImpl->n_layers = other.mImpl->n_layers; // Shallow Copy
     }
-    return *this
+    return *this;
 }
 
-NeuralNet::~NeuralNet() {}
+NeuralNet::~NeuralNet() {
+    delete mImpl->n_layers;
+    delete mImpl->weights;
+    delete mImpl->changes;
+    delete mImpl->node_acts;
+}
 
-double[][] NeuralNet::weights(int layer) {
+double** NeuralNet::weights(int layer) {
     return mImpl->weights[0];
 }
 
-void NeuralNet::train(double[][][] pattern, int iterations, double learn_rate, double momentum) {
+void NeuralNet::train(double ***pattern, int iterations, double learn_rate, double momentum, int num_patterns) {
     /*
     * Pattern should be an array with multiple input / output pairings
     */
@@ -167,26 +194,33 @@ void NeuralNet::train(double[][][] pattern, int iterations, double learn_rate, d
     int update_interval = iterations / 10;
     for(int i = 0; i < iterations; i++) {
         error = 0.0;
-        for(double[] &p : pattern) {
-            mImpl->update_network(p[0]);
-            pair_error = mImpl->backPropogate(p[1], learn_rate, momentum);
+        for(int j = 0; j < num_patterns; j++) {
+            mImpl->update_network(pattern[j][0]);
+            pair_error = mImpl->backPropogate(pattern[j][1], learn_rate, momentum);
             error += pair_error;
         }
         if(i % update_interval == 0) {
-            std::cout << "Error Trial " + i + ": " + error << std::endl;
+            std::cout << "Error Trial " << i << ": " << error << std::endl;
         }
     }
-    std::cout << "Final Iteration Error:  " + error << std::endl;
+    std::cout << "Final Iteration Error:  " << error << std::endl;
 }
-
-double[] NeuralNet::test(double[][][] patterns) {
-    double[] tmp = double[patterns.length];
+/*
+double* NeuralNet::test(double ***patterns) {
+    double* tmp = new double [patterns.length]; // Cannot use .length
     int i = 0;
-    for(double[] &p : pattern) {
-        double[] result = mImpl->update(p[0])
+    for(double p : pattern) {
+        double* result = mImpl->update(p[0])
         std::cout << p[0] << " -> " << result << std::endl;
         tmp[i] = result;
         i++;
     }
     return tmp;
+}*/
+
+void NeuralNet::print_test(double ***patterns, int num_patterns) {
+    for(int i = 0; i < num_patterns; i++) {
+        double* result = mImpl->update_network(patterns[i][0]);
+        std::cout << patterns[i][0] << " -> " << result << std::endl;
+    }
 }
