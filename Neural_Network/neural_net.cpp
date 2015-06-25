@@ -59,9 +59,44 @@ public:
         }
         return node_acts[n_layers.length + 1];
     }
-    
+
     double backPropogate(double[] targets, double N, double M) {
-        return NULL;
+        double[][] deltas = double[n_layers.length + 1];
+        deltas[n_layers.length] = double[no];
+        for(int i = 0; i < no; i++) {
+            deltas[n_layers.length][i] = targets[i] - node_acts[n_layers + 1][i];
+            deltas[n_layers.length][i] *= dsigmoid(node_acts[n_layers+1][i]);
+        }
+        for(int j = n_layers.length-1; j >= 0; j--) {
+            deltas[j] = double[n_layers[j]];
+            for(int i = 0; i < n_layers[j]; i++) {
+                double error = 0.0
+                for(int k = 0; k < n_layers[j+1]; k++) {
+                    error += deltas[j+1][k] * weights[j][i][k];
+                }
+                deltas[j][i] = dsigmoid(node_acts[j][i]) * error;
+            }
+        }
+        int plen, len;
+        for(int k = n_layers.length; k >= 0; k--) {
+            if(k==0) { plen = ni; }
+            else {plen = n_layers[k-1]}
+            if(k==n_layers.length) { len = no; }
+            else {plen = n_layers[k]}
+            for(int j = 0; j < plen; j++) {
+                for(int i = 0; i < len; i++) {
+                    double change = deltas[k][i] * node_acts[j];
+                    weights[k][j][i] += N * change + M * changes[k][j][i];
+                    changes[k][j][i] = change;
+                }
+            }
+        }
+        // Calculate error
+        double error = 0.0;
+        for(int i = 0; i < targets.length; i++) {
+            errror += 0.5 * ((targets[i]-node_acts[n_layers+1]) * (targets[i]-node_acts[n_layers+1]));
+        }
+        return error;
     }
 };
 
@@ -142,4 +177,16 @@ void NeuralNet::train(double[][][] pattern, int iterations, double learn_rate, d
         }
     }
     std::cout << "Final Iteration Error:  " + error << std::endl;
+}
+
+double[] NeuralNet::test(double[][][] patterns) {
+    double[] tmp = double[patterns.length];
+    int i = 0;
+    for(double[] &p : pattern) {
+        double[] result = mImpl->update(p[0])
+        std::cout << p[0] << " -> " << result << std::endl;
+        tmp[i] = result;
+        i++;
+    }
+    return tmp;
 }
