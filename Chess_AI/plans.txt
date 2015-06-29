@@ -1,0 +1,2 @@
+Later this summer or next year I want to try and make a chess AI
+This is to remind me if I ever forget and am browsing my github
